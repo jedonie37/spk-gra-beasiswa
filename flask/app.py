@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from config import Config
@@ -145,7 +147,7 @@ def hasil_seleksi():
     return jsonify(output)
 
 
-# Import dari CSV
+# Import dari CSV (Fungsi duplikat pertama dari kode asli Anda)
 @app.route('/api/calon/import', methods=['POST'])
 def import_csv():
     if 'file' not in request.files:
@@ -190,7 +192,7 @@ def import_csv():
         print("❌ Error:", e)
         return jsonify({'message': 'Gagal import CSV', 'error': str(e)}), 500
 
-# Hapus Data
+# Hapus Data Individual
 @app.route('/api/calon/<int:id>', methods=['DELETE'])
 def delete_calon(id):
     calon = CalonPeserta.query.get(id)
@@ -200,6 +202,27 @@ def delete_calon(id):
         return jsonify({"message": "Data berhasil dihapus"}), 200
     else:
         return jsonify({"message": "Data tidak ditemukan"}), 404
+
+# --- BAGIAN BARU YANG HANYA DITAMBAHKAN ---
+# Hapus Banyak Data (Batch Delete)
+@app.route('/api/calon/batch-delete', methods=['POST'])
+def batch_delete_calon():
+    data = request.get_json()
+    ids_to_delete = data.get('ids')
+
+    if not ids_to_delete or not isinstance(ids_to_delete, list):
+        return jsonify({'message': 'Format data salah atau tidak ada ID yang dipilih'}), 400
+
+    try:
+        # Hapus semua calon yang ID-nya ada di dalam list secara efisien
+        CalonPeserta.query.filter(CalonPeserta.id.in_(ids_to_delete)).delete(synchronize_session=False)
+        db.session.commit()
+        return jsonify({'message': f'{len(ids_to_delete)} data berhasil dihapus'}), 200
+    except Exception as e:
+        db.session.rollback() # Penting untuk membatalkan jika terjadi error
+        return jsonify({'message': 'Gagal menghapus data', 'error': str(e)}), 500
+# --- AKHIR DARI BAGIAN BARU ---
+
 
 @app.route('/api/history', methods=['GET'])
 def get_history():
@@ -218,3 +241,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
